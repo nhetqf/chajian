@@ -6,6 +6,9 @@ let cachedData = {};
 function getClient() {
     var _a, _b, _c;
     const { url, username, password, searchPath } = (_b = (_a = env === null || env === void 0 ? void 0 : env.getUserVariables) === null || _a === void 0 ? void 0 : _a.call(env)) !== null && _b !== void 0 ? _b : {};
+    console.log('WebDAV URL:', url);
+    console.log('WebDAV 用户名:', username);
+    console.log('WebDAV 密码:', password);
     if (!(url && username && password)) {
         return null;
     }
@@ -87,15 +90,19 @@ async function getMusicInfo(musicItem) {
     const client = getClient();
     try {
         const songPath = musicItem.id;
-        const coverPath = songPath.replace(/\.\w+$/, '.jpg'); // 假设封面是 jpg 格式
-
-        // 检查封面文件是否存在
-        const coverExists = await client.exists(coverPath);
-        if (coverExists) {
-            const coverUrl = client.getFileDownloadLink(coverPath);
-            return {
-                albumCover: coverUrl
-            };
+        // 尝试不同的封面文件格式，这里以 .jpg 和 .png 为例
+        const possibleCoverExtensions = ['.jpg', '.png'];
+        for (const ext of possibleCoverExtensions) {
+            const coverPath = songPath.replace(/\.\w+$/, ext);
+            console.log('构造的封面路径:', coverPath);
+            const coverExists = await client.exists(coverPath);
+            console.log('封面文件是否存在:', coverExists);
+            if (coverExists) {
+                const coverUrl = client.getFileDownloadLink(coverPath);
+                return {
+                    albumCover: coverUrl
+                };
+            }
         }
         return null;
     } catch (error) {
@@ -109,9 +116,7 @@ async function getLyric(musicItem) {
     const client = getClient();
     try {
         const songPath = musicItem.id;
-        const lyricPath = songPath.replace(/\.\w+$/, '.lrc'); // 假设歌词是 lrc 格式
-
-        // 检查歌词文件是否存在
+        const lyricPath = songPath.replace(/\.\w+$/, '.lrc');
         const lyricExists = await client.exists(lyricPath);
         if (lyricExists) {
             const lyricContent = await client.getFileContents(lyricPath, { format: 'text' });
