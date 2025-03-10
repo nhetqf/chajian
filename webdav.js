@@ -1,10 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const webdav_1 = require("webdav");
-
 let cachedData = {};
 
-// 获取 WebDAV 客户端
 function getClient() {
     var _a, _b, _c;
     const { url, username, password, searchPath } = (_b = (_a = env === null || env === void 0 ? void 0 : env.getUserVariables) === null || _a === void 0 ? void 0 : _a.call(env)) !== null && _b !== void 0 ? _b : {};
@@ -29,53 +27,12 @@ function getClient() {
     });
 }
 
-// 解析文件名，提取歌手、歌曲名和专辑名
-function parseFileName(filename) {
-    const parts = filename.split(" - "); // 假设文件名格式为 "歌手 - 歌曲名 - 专辑名.mp3"
-    if (parts.length === 3) {
-        return {
-            artist: parts[0].trim(),
-            title: parts[1].trim(),
-            album: parts[2].replace(/\.[^/.]+$/, "").trim(), // 去掉文件扩展名
-        };
-    }
-    return {
-        artist: "未知歌手",
-        title: filename.replace(/\.[^/.]+$/, "").trim(), // 去掉文件扩展名
-        album: "默认专辑",
-    };
-}
-
-// 获取封面文件的 URL
-function getCoverUrl(filename, client) {
-    const baseName = filename.replace(/\.[^/.]+$/, ""); // 去掉文件扩展名
-    const coverExtensions = [".jpg", ".png"];
-    for (const ext of coverExtensions) {
-        const coverPath = `${baseName}${ext}`;
-        if (cachedData.cacheFileList?.some((it) => it.filename === coverPath)) {
-            return client.getFileDownloadLink(coverPath);
-        }
-    }
-    return null; // 如果没有找到封面，返回 null
-}
-
-// 获取歌词文件的 URL
-function getLyricUrl(filename, client) {
-    const baseName = filename.replace(/\.[^/.]+$/, ""); // 去掉文件扩展名
-    const lyricPath = `${baseName}.lrc`;
-    if (cachedData.cacheFileList?.some((it) => it.filename === lyricPath)) {
-        return client.getFileDownloadLink(lyricPath);
-    }
-    return null; // 如果没有找到歌词，返回 null
-}
-
-// 搜索音乐
 async function searchMusic(query) {
     var _a, _b;
     const client = getClient();
     if (!cachedData.cacheFileList) {
         const searchPathList = ((_a = cachedData.searchPathList) === null || _a === void 0 ? void 0 : _a.length)
-            ? cachedData.searchPathList
+           ? cachedData.searchPathList
             : ["/"];
         let result = [];
         for (let search of searchPathList) {
@@ -90,22 +47,16 @@ async function searchMusic(query) {
     return {
         isEnd: true,
         data: ((_b = cachedData.cacheFileList) !== null && _b !== void 0 ? _b : [])
-            .filter((it) => it.basename.includes(query))
-            .map((it) => {
-                const { artist, title, album } = parseFileName(it.basename);
-                return {
-                    title,
-                    id: it.filename,
-                    artist,
-                    album,
-                    cover: getCoverUrl(it.filename, client),
-                    lyric: getLyricUrl(it.filename, client),
-                };
-            }),
+           .filter((it) => it.basename.includes(query))
+           .map((it) => ({
+                title: it.basename,
+                id: it.filename,
+                artist: "未知作者",
+                album: "未知专辑",
+            })),
     };
 }
 
-// 获取排行榜
 async function getTopLists() {
     getClient();
     const data = {
@@ -118,34 +69,63 @@ async function getTopLists() {
     return [data];
 }
 
-// 获取排行榜详情
 async function getTopListDetail(topListItem) {
     const client = getClient();
     const fileItems = (await client.getDirectoryContents(topListItem.id)).filter((it) => it.type === "file" && it.mime.startsWith("audio"));
     return {
-        musicList: fileItems.map((it) => {
-            const { artist, title, album } = parseFileName(it.basename);
-            return {
-                title,
-                id: it.filename,
-                artist,
-                album,
-                cover: getCoverUrl(it.filename, client),
-                lyric: getLyricUrl(it.filename, client),
-            };
-        }),
+        musicList: fileItems.map((it) => ({
+            title: it.basename,
+            id: it.filename,
+            artist: "未知作者",
+            album: "未知专辑",
+        })),
     };
 }
 
-// 获取音乐文件的播放链接
-async function getMediaSource(musicItem) {
+// 获取音乐详情（补充封面信息）
+async function getMusicInfo(musicItem) {
     const client = getClient();
-    return {
-        url: client.getFileDownloadLink(musicItem.id),
-    };
+    try {
+        const songPath = musicItem.id;
+        const coverPath = songPath.replace(/\.\w+$/, '.jpg'); // 假设封面是 jpg 格式
+
+        // 检查封面文件是否存在
+        const coverExists = await client.exists(coverPath);
+        if (coverExists) {
+            const coverUrl = client.getFileDownloadLink(coverPath);
+            return {
+                albumCover: coverUrl
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('获取音乐封面信息出错:', error);
+        return null;
+    }
 }
 
-// 插件导出
+// 获取歌词
+async function getLyric(musicItem) {
+    const client = getClient();
+    try {
+        const songPath = musicItem.id;
+        const lyricPath = songPath.replace(/\.\w+$/, '.lrc'); // 假设歌词是 lrc 格式
+
+        // 检查歌词文件是否存在
+        const lyricExists = await client.exists(lyricPath);
+        if (lyricExists) {
+            const lyricContent = await client.getFileContents(lyricPath, { format: 'text' });
+            return {
+                rawLrc: lyricContent
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('获取歌词信息出错:', error);
+        return null;
+    }
+}
+
 module.exports = {
     platform: "WebDAV",
     author: "猫头猫",
@@ -180,5 +160,12 @@ module.exports = {
     },
     getTopLists,
     getTopListDetail,
-    getMediaSource,
+    getMediaSource(musicItem) {
+        const client = getClient();
+        return {
+            url: client.getFileDownloadLink(musicItem.id),
+        };
+    },
+    getMusicInfo,
+    getLyric
 };
