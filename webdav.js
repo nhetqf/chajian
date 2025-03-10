@@ -131,6 +131,49 @@ async function getLyric(musicItem) {
     }
 }
 
+// 优化：增加一个辅助函数来检查文件是否存在并获取内容
+async function checkAndGetFile(client, filePath, format = 'text') {
+    const fileExists = await client.exists(filePath);
+    if (fileExists) {
+        return await client.getFileContents(filePath, { format });
+    }
+    return null;
+}
+
+// 优化后的获取音乐详情函数
+async function getMusicInfoOptimized(musicItem) {
+    const client = getClient();
+    if (!client) return null;
+    const songPath = musicItem.id;
+    const possibleCoverExtensions = ['.jpg', '.png'];
+    for (const ext of possibleCoverExtensions) {
+        const coverPath = songPath.replace(/\.\w+$/, ext);
+        const coverData = await checkAndGetFile(client, coverPath, 'buffer');
+        if (coverData) {
+            const coverUrl = client.getFileDownloadLink(coverPath);
+            return {
+                albumCover: coverUrl
+            };
+        }
+    }
+    return null;
+}
+
+// 优化后的获取歌词函数
+async function getLyricOptimized(musicItem) {
+    const client = getClient();
+    if (!client) return null;
+    const songPath = musicItem.id;
+    const lyricPath = songPath.replace(/\.\w+$/, '.lrc');
+    const lyricContent = await checkAndGetFile(client, lyricPath);
+    if (lyricContent) {
+        return {
+            rawLrc: lyricContent
+        };
+    }
+    return null;
+}
+
 module.exports = {
     platform: "WebDAV",
     author: "猫头猫",
@@ -171,6 +214,6 @@ module.exports = {
             url: client.getFileDownloadLink(musicItem.id),
         };
     },
-    getMusicInfo,
-    getLyric
+    getMusicInfo: getMusicInfoOptimized,
+    getLyric: getLyricOptimized
 };
