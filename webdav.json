@@ -131,7 +131,7 @@ module.exports = {
             name: "存放歌曲的路径",
         },
     ],
-    version: "0.0.2",
+    version: "0.0.1",
     supportedSearchType: ["music"],
     srcUrl: "https://raw.githubusercontent.com/nhetqf/chajian/refs/heads/main/webdav.json",
     cacheControl: "no-cache",
