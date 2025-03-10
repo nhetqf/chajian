@@ -133,7 +133,7 @@ module.exports = {
     ],
     version: "0.0.2",
     supportedSearchType: ["music"],
-    srcUrl: "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/webdav/index.js",
+    srcUrl: "https://raw.githubusercontent.com/nhetqf/chajian/refs/heads/main/webdav.json",
     cacheControl: "no-cache",
     search(query, page, type) {
         if (type === "music") {
