@@ -100,7 +100,7 @@ async function getMusicInfo(musicItem) {
             if (coverExists) {
                 const coverUrl = client.getFileDownloadLink(coverPath);
                 return {
-                    albumCover: coverUrl
+                    artwork: coverUrl
                 };
             }
         }
@@ -152,7 +152,7 @@ async function getMusicInfoOptimized(musicItem) {
         if (coverData) {
             const coverUrl = client.getFileDownloadLink(coverPath);
             return {
-                albumCover: coverUrl
+                artwork: coverUrl
             };
         }
     }
